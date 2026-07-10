@@ -1,0 +1,15 @@
+fastapi>=0.100.0
+uvicorn>=0.22.0
+websockets>=11.0.0
+twilio>=8.0.0
+deepgram-sdk>=3.0.0
+groq>=0.9.0
+apscheduler>=3.10.0
+psycopg2-binary>=2.9.0
+python-dotenv>=1.0.0
+httpx>=0.24.0
+soundfile>=0.12.0
+numpy>=1.22.0,<2.0.0
+torch>=2.0.0
+onnxruntime>=1.14.0
+kokoro>=0.1.9
