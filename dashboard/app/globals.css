@@ -3,14 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --background: #0b0f19; /* Sleek dark-navy background */
-  --foreground: #f3f4f6; /* Off-white text */
+  --background: #0b0f19;
+  --foreground: #f3f4f6;
+  
+  --card-bg: rgba(17, 24, 39, 0.7);
+  --card-border: rgba(51, 65, 85, 0.4);
+  --card-border-hover: rgba(6, 182, 212, 0.4);
+  
+  --accent-teal: #14b8a6;
+  --accent-cyan: #06b6d4;
+  --accent-blue: #3b82f6;
+  --accent-indigo: #6366f1;
+  --accent-purple: #a855f7;
+  
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #ef4444;
+  --status-info: #3b82f6;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   overflow-x: hidden;
 }
 
@@ -32,3 +47,138 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.glass-panel:hover {
+  border-color: var(--card-border-hover);
+  box-shadow: 0 10px 30px -5px rgba(6, 182, 212, 0.15), 0 0 15px -3px rgba(6, 182, 212, 0.1);
+}
+
+.glass-card-interactive:active {
+  transform: scale(0.99);
+}
+
+/* Glowing text & button states */
+.text-glow-teal {
+  text-shadow: 0 0 10px rgba(20, 184, 166, 0.4);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+}
+
+.glow-btn-teal {
+  background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan));
+  color: #0b0f19;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+}
+
+.glow-btn-teal:hover:not(:disabled) {
+  opacity: 0.95;
+  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.5), 0 0 10px rgba(20, 184, 166, 0.2);
+  transform: translateY(-1px);
+}
+
+.glow-btn-teal:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-glow-danger {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* Table styling for glass design */
+.glass-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.glass-table th {
+  background: rgba(15, 23, 42, 0.6);
+  color: #94a3b8;
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.glass-table td {
+  border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+}
+
+.glass-table tr:last-child td {
+  border-bottom: none;
+}
+
+.glass-table tr:hover td {
+  background: rgba(30, 41, 59, 0.3);
+}
+
+/* Input Fields styling */
+.glass-input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  border-radius: 8px;
+  color: var(--foreground);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+  background: rgba(15, 23, 42, 0.8);
+}
+
