@@ -101,6 +101,8 @@ def get_patient_by_id(patient_id):
     return res[0] if res else None
 
 def create_patient(first_name, last_name, phone_number, gender=None, birth_date=None, fhir_id=None):
+    if fhir_id == "" or (isinstance(fhir_id, str) and not fhir_id.strip()):
+        fhir_id = None
     query = """
     INSERT INTO patients (first_name, last_name, phone_number, gender, birth_date, fhir_id)
     VALUES (%s, %s, %s, %s, %s, %s)
@@ -117,6 +119,8 @@ def get_medication_requests_for_patient(patient_id):
     )
 
 def create_medication_request(patient_id, medication_name, dosage_instruction, scheduled_time, fhir_id=None):
+    if fhir_id == "" or (isinstance(fhir_id, str) and not fhir_id.strip()):
+        fhir_id = None
     query = """
     INSERT INTO medication_requests (patient_id, medication_name, dosage_instruction, scheduled_time, fhir_id)
     VALUES (%s, %s, %s, %s, %s)
