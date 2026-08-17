@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown_scheduler()
 
 app = FastAPI(
-    title="MedHencer Medical Adherence Agent API",
+    title="MedHerence Medical Adherence Agent API",
     lifespan=lifespan
 )
 
@@ -58,6 +58,13 @@ class MedicationCreate(BaseModel):
     medication_name: str
     dosage_instruction: str
     scheduled_time: str # format HH:MM:SS
+    fhir_id: str = None
+
+class MedicationUpdate(BaseModel):
+    medication_name: str = None
+    dosage_instruction: str = None
+    scheduled_time: str = None # format HH:MM:SS
+    status: str = None
     fhir_id: str = None
 
 class TriggerReminderRequest(BaseModel):
@@ -127,7 +134,7 @@ async def twilio_twiml(
     # Return TwiML to connect the voice stream
     twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say>Connecting to MedHencer medication reminder assistant.</Say>
+    <Say>Connecting to MedHerence medication reminder assistant.</Say>
     <Connect>
         <Stream url="{ws_stream_url}" />
     </Connect>
@@ -322,6 +329,29 @@ def api_create_patient_medication(patient_id: str, med: MedicationCreate):
     if not res:
         raise HTTPException(status_code=400, detail="Failed to create medication.")
     return res
+
+@app.put("/api/patients/{patient_id}/medications/{medication_id}")
+@app.put("/api/medications/{medication_id}")
+def api_update_patient_medication(medication_id: str, med: MedicationUpdate, patient_id: str = None):
+    res = database.update_medication_request(
+        medication_id=medication_id,
+        medication_name=med.medication_name,
+        dosage_instruction=med.dosage_instruction,
+        scheduled_time=med.scheduled_time,
+        status=med.status,
+        fhir_id=med.fhir_id
+    )
+    if not res:
+        raise HTTPException(status_code=404, detail="Medication record not found or update failed.")
+    return res
+
+@app.delete("/api/patients/{patient_id}/medications/{medication_id}")
+@app.delete("/api/medications/{medication_id}")
+def api_delete_patient_medication(medication_id: str, patient_id: str = None):
+    res = database.delete_medication_request(medication_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Medication not found or delete failed.")
+    return {"status": "deleted", "id": medication_id}
 
 @app.get("/api/dashboard/summary")
 def api_dashboard_summary():

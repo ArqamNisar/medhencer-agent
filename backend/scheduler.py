@@ -93,7 +93,7 @@ def trigger_single_reminder_manually(medication_request_id: str) -> str:
         call_sid = twilio_client.trigger_outbound_call(
             to_phone=patient_phone,
             patient_id=patient_id,
-            medication_request_id=mr
+            medication_request_id=str(mr['id'])
         )
         
         if call_sid:

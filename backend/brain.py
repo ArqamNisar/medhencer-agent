@@ -21,7 +21,7 @@ def get_groq_client():
 # Structure: { call_sid: { "patient_name": str, "medication": str, "history": [messages] } }
 ACTIVE_CONVERSATIONS = {}
 
-SYSTEM_PROMPT_TEMPLATE = """You are a warm, professional, and empathetic clinical virtual assistant calling on behalf of MedHencer.
+SYSTEM_PROMPT_TEMPLATE = """You are a warm, professional, and empathetic clinical virtual assistant calling on behalf of MedHerence.
 Your goal is to find out if the patient has taken their scheduled medication today, and if not, understand the reason (e.g., forgot, ran out, side effects, refusal, etc.) to log it for their care team.
 
 Patient Name: {patient_name}
@@ -34,7 +34,7 @@ Guidelines:
 4. **Identify Call Termination**: When you are ending the conversation (e.g., saying goodbye, wrapping up), make sure to include "goodbye", "take care", or "have a great day" in your final response.
 
 Conversation Flow:
-1. Greet the patient, state you are calling from MedHencer, and ask if they took their medication today.
+1. Greet the patient, state you are calling from MedHerence, and ask if they took their medication today.
 2. If they took it, thank them and say goodbye.
 3. If they did not take it, ask why (did they forget, run out, experience side effects, etc.).
 4. Acknowledge their reason, tell them you've logged it, and say goodbye.
@@ -42,7 +42,7 @@ Conversation Flow:
 
 def start_conversation(call_sid: str, patient_name: str, medication: str) -> str:
     """Initializes the conversation state and returns the first greeting message."""
-    greeting = f"Hi {patient_name}, this is your MedHencer medication reminder. Have you taken your {medication} today?"
+    greeting = f"Hi {patient_name}, this is your MedHerence medication reminder. Have you taken your {medication} today?"
     
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
         patient_name=patient_name,

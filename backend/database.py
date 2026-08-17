@@ -129,6 +129,48 @@ def create_medication_request(patient_id, medication_name, dosage_instruction, s
     res = execute_query(query, (patient_id, medication_name, dosage_instruction, scheduled_time, fhir_id), fetch=True)
     return res[0] if res else None
 
+def get_medication_request_by_id(medication_id):
+    res = execute_query("SELECT * FROM medication_requests WHERE id = %s", (medication_id,), fetch=True)
+    return res[0] if res else None
+
+def update_medication_request(medication_id, medication_name=None, dosage_instruction=None, scheduled_time=None, status=None, fhir_id=None):
+    updates = []
+    params = []
+    if medication_name is not None:
+        updates.append("medication_name = %s")
+        params.append(medication_name)
+    if dosage_instruction is not None:
+        updates.append("dosage_instruction = %s")
+        params.append(dosage_instruction)
+    if scheduled_time is not None:
+        updates.append("scheduled_time = %s")
+        params.append(scheduled_time)
+    if status is not None:
+        updates.append("status = %s")
+        params.append(status)
+    if fhir_id is not None:
+        fhir_val = None if (fhir_id == "" or (isinstance(fhir_id, str) and not fhir_id.strip())) else fhir_id
+        updates.append("fhir_id = %s")
+        params.append(fhir_val)
+        
+    if not updates:
+        return get_medication_request_by_id(medication_id)
+        
+    params.append(medication_id)
+    query = f"""
+    UPDATE medication_requests
+    SET {", ".join(updates)}
+    WHERE id = %s
+    RETURNING *;
+    """
+    res = execute_query(query, tuple(params), fetch=True)
+    return res[0] if res else None
+
+def delete_medication_request(medication_id):
+    query = "DELETE FROM medication_requests WHERE id = %s RETURNING *;"
+    res = execute_query(query, (medication_id,), fetch=True)
+    return res[0] if res else None
+
 # Call Logs
 def create_call_log(patient_id, twilio_call_sid, status="queued", direction="outbound"):
     query = """

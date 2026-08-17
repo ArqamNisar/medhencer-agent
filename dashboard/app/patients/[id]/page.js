@@ -22,8 +22,21 @@ export default function PatientDetailPage({ params }) {
     fhir_id: "",
   });
 
-  // Call reminder trigger state
+  // Edit Medication Form State
+  const [editingMedId, setEditingMedId] = useState(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editForm, setEditForm] = useState({
+    medication_name: "",
+    dosage_instruction: "",
+    scheduled_time: "",
+    fhir_id: "",
+  });
+
+  // Call reminder trigger state & Notification banner
   const [triggeringId, setTriggeringId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [callNotification, setCallNotification] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   const fetchPatientDetails = async () => {
     try {
@@ -64,6 +77,7 @@ export default function PatientDetailPage({ params }) {
     }
   }, [patientId]);
 
+  // Add Medication Handlers
   const handleMedInputChange = (e) => {
     const { name, value } = e.target;
     setMedForm((prev) => ({ ...prev, [name]: value }));
@@ -114,6 +128,7 @@ export default function PatientDetailPage({ params }) {
         scheduled_time: "",
         fhir_id: "",
       });
+      showTemporarySuccess("New medication schedule added successfully!");
     } catch (err) {
       alert(err.message);
     } finally {
@@ -121,9 +136,110 @@ export default function PatientDetailPage({ params }) {
     }
   };
 
-  const handleTriggerReminder = async (medId) => {
+  // Edit Medication Handlers
+  const startEditing = (med) => {
+    setEditingMedId(med.id);
+    setEditForm({
+      medication_name: med.medication_name || "",
+      dosage_instruction: med.dosage_instruction || "",
+      scheduled_time: (med.scheduled_time || "").slice(0, 5),
+      fhir_id: med.fhir_id || "",
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingMedId(null);
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditMedSubmit = async (e, medId) => {
+    e.preventDefault();
+    if (!editForm.medication_name || !editForm.dosage_instruction || !editForm.scheduled_time) {
+      alert("Please fill out all required fields.");
+      return;
+    }
+
+    try {
+      setEditSubmitting(true);
+
+      const formattedTime = editForm.scheduled_time.length === 5 
+        ? `${editForm.scheduled_time}:00` 
+        : editForm.scheduled_time;
+
+      const payload = {
+        ...editForm,
+        scheduled_time: formattedTime,
+      };
+
+      const res = await fetch(`/api/patients/${patientId}/medications/${medId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Failed to update medication details");
+      }
+
+      // Reload meds list
+      const medsRes = await fetch(`/api/patients/${patientId}/medications`);
+      if (medsRes.ok) {
+        const medsData = await medsRes.json();
+        setMedications(medsData);
+      }
+
+      setEditingMedId(null);
+      showTemporarySuccess("Medication schedule updated successfully!");
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  // Delete Medication Handler
+  const handleDeleteMed = async (medId, medName) => {
+    if (!confirm(`Are you sure you want to remove '${medName}' from the active schedule?`)) {
+      return;
+    }
+
+    try {
+      setDeletingId(medId);
+      const res = await fetch(`/api/patients/${patientId}/medications/${medId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Failed to delete medication");
+      }
+
+      // Reload meds list
+      const medsRes = await fetch(`/api/patients/${patientId}/medications`);
+      if (medsRes.ok) {
+        const medsData = await medsRes.json();
+        setMedications(medsData);
+      }
+
+      showTemporarySuccess(`'${medName}' was removed from the schedule.`);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Real-Time Call Reminder Trigger Handler
+  const handleTriggerReminder = async (medId, medName) => {
     try {
       setTriggeringId(medId);
+      setCallNotification(null);
+
       const res = await fetch("/api/reminders/trigger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,12 +252,28 @@ export default function PatientDetailPage({ params }) {
       }
 
       const data = await res.json();
-      alert(`Success! Manual call queued. Twilio SID: ${data.call_sid}`);
+      setCallNotification({
+        type: "success",
+        medName: medName,
+        callSid: data.call_sid,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      });
     } catch (err) {
-      alert(err.message);
+      setCallNotification({
+        type: "error",
+        medName: medName,
+        message: err.message,
+      });
     } finally {
       setTriggeringId(null);
     }
+  };
+
+  const showTemporarySuccess = (msg) => {
+    setActionSuccess(msg);
+    setTimeout(() => {
+      setActionSuccess(null);
+    }, 4000);
   };
 
   const calculateAge = (birthDateStr) => {
@@ -160,6 +292,20 @@ export default function PatientDetailPage({ params }) {
     if (!dateStr) return "N/A";
     const date = new Date(dateStr);
     return date.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+  };
+
+  const formatScheduledTimeDisplay = (timeStr) => {
+    if (!timeStr) return "N/A";
+    try {
+      const parts = timeStr.split(":");
+      const h = parseInt(parts[0], 10);
+      const m = parts[1] || "00";
+      const ampm = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${h12}:${m} ${ampm}`;
+    } catch (e) {
+      return timeStr;
+    }
   };
 
   if (loading) {
@@ -201,6 +347,92 @@ export default function PatientDetailPage({ params }) {
         </svg>
         <span className="text-slate-300">{patient?.first_name} {patient?.last_name}</span>
       </nav>
+
+      {/* Action Success Toast Banner */}
+      {actionSuccess && (
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm flex items-center justify-between animate-fade-in shadow-lg shadow-emerald-500/5">
+          <div className="flex items-center gap-2.5">
+            <svg className="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">{actionSuccess}</span>
+          </div>
+          <button onClick={() => setActionSuccess(null)} className="text-emerald-400/70 hover:text-emerald-400">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Real-time Call Trigger Feedback Notification Banner */}
+      {callNotification && (
+        <div className={`p-5 rounded-2xl border animate-fade-in ${
+          callNotification.type === "success" 
+            ? "bg-[#0b1b1e] border-teal-500/40 shadow-xl shadow-teal-500/10 text-slate-200" 
+            : "bg-[#1f1013] border-red-500/40 shadow-xl shadow-red-500/10 text-slate-200"
+        }`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                callNotification.type === "success" ? "bg-teal-500/20 text-teal-400" : "bg-red-500/20 text-red-400"
+              }`}>
+                {callNotification.type === "success" ? (
+                  <svg className="w-5 h-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className={`font-bold text-sm ${callNotification.type === "success" ? "text-teal-300" : "text-red-400"}`}>
+                    {callNotification.type === "success" ? "Live Reminder Call Initiated" : "Call Trigger Failed"}
+                  </h4>
+                  {callNotification.time && (
+                    <span className="text-[11px] text-slate-500 font-mono">[{callNotification.time}]</span>
+                  )}
+                </div>
+
+                {callNotification.type === "success" ? (
+                  <div className="mt-1 space-y-1.5 text-xs text-slate-300">
+                    <p>
+                      The AI Voice Assistant is dialing <strong className="text-white font-mono">{patient?.phone_number}</strong> for <strong className="text-cyan-300">{callNotification.medName}</strong>.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <span className="font-mono text-[11px] text-slate-400 bg-slate-900/80 px-2 py-1 rounded border border-slate-800">
+                        SID: {callNotification.callSid}
+                      </span>
+                      <Link
+                        href="/calls"
+                        className="text-cyan-400 hover:text-cyan-300 font-semibold inline-flex items-center gap-1 transition"
+                      >
+                        Audit Real-time Call Logs & Transcript
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-300">{callNotification.message}</p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setCallNotification(null)}
+              className="text-slate-400 hover:text-white transition p-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Grid details */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -247,10 +479,13 @@ export default function PatientDetailPage({ params }) {
             <div className="flex justify-between items-center pb-4 border-b border-slate-800/40 mb-6">
               <div>
                 <h3 className="font-bold text-lg text-slate-100">Prescribed Medications</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Active medication schedules and manual reminders.</p>
+                <p className="text-xs text-slate-400 mt-0.5">Active medication schedules, edit times, and real-time reminders.</p>
               </div>
               <button
-                onClick={() => setIsAddMedOpen(!isAddMedOpen)}
+                onClick={() => {
+                  setIsAddMedOpen(!isAddMedOpen);
+                  setEditingMedId(null);
+                }}
                 className="px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-700 bg-slate-900/60 text-slate-200 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -266,8 +501,11 @@ export default function PatientDetailPage({ params }) {
 
             {/* Add Medication form (inline dropdown) */}
             {isAddMedOpen && (
-              <div className="p-5 bg-slate-900/50 rounded-xl border border-slate-800 mb-6 animate-fade-in">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-4">Add Medication Schedule</h4>
+              <div className="p-5 bg-slate-900/60 rounded-xl border border-cyan-500/30 mb-6 animate-fade-in shadow-lg shadow-cyan-500/5">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400">Add Medication Schedule</h4>
+                  <span className="text-[10px] text-slate-500 font-mono">Daily Auto-Reminder</span>
+                </div>
                 <form onSubmit={handleAddMedSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -305,7 +543,7 @@ export default function PatientDetailPage({ params }) {
                         required
                         value={medForm.scheduled_time}
                         onChange={handleMedInputChange}
-                        className="glass-input px-3 py-2 w-full text-sm"
+                        className="glass-input px-3 py-2 w-full text-sm font-mono text-slate-100"
                       />
                     </div>
                     <div>
@@ -322,6 +560,13 @@ export default function PatientDetailPage({ params }) {
                   </div>
 
                   <div className="flex justify-end gap-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddMedOpen(false)}
+                      className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-700 text-slate-400 hover:text-white transition"
+                    >
+                      Cancel
+                    </button>
                     <button
                       type="submit"
                       disabled={medSubmitting}
@@ -345,51 +590,173 @@ export default function PatientDetailPage({ params }) {
               </div>
             ) : (
               <div className="space-y-4">
-                {medications.map((med) => (
-                  <div key={med.id} className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-200">{med.medication_name}</h4>
-                        {med.fhir_id && (
-                          <span className="text-[9px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
-                            FHIR: {med.fhir_id}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400">{med.dosage_instruction}</p>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1.5">
-                        <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Scheduled: <strong className="text-slate-300 font-mono">{med.scheduled_time}</strong> daily</span>
-                      </div>
-                    </div>
+                {medications.map((med) => {
+                  const isEditingThis = editingMedId === med.id;
 
-                    <div className="self-end md:self-auto">
-                      <button
-                        onClick={() => handleTriggerReminder(med.id)}
-                        disabled={triggeringId === med.id}
-                        className="px-4 py-2 text-xs font-bold rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {triggeringId === med.id ? (
-                          <>
-                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.2" />
-                            </svg>
-                            Calling...
-                          </>
-                        ) : (
-                          <>
+                  if (isEditingThis) {
+                    // Inline Edit Mode for this Medication
+                    return (
+                      <div key={med.id} className="p-5 bg-slate-900/80 border border-teal-500/40 rounded-xl shadow-xl shadow-teal-500/5 animate-fade-in">
+                        <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            Trigger Call
-                          </>
-                        )}
-                      </button>
+                            Edit Medication & Schedule
+                          </h4>
+                          <span className="text-[10px] text-slate-400 font-mono">Med ID: {med.id}</span>
+                        </div>
+
+                        <form onSubmit={(e) => handleEditMedSubmit(e, med.id)} className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Medication Name *</label>
+                              <input
+                                type="text"
+                                name="medication_name"
+                                required
+                                value={editForm.medication_name}
+                                onChange={handleEditInputChange}
+                                className="glass-input px-3 py-2 w-full text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Dosage Instruction *</label>
+                              <input
+                                type="text"
+                                name="dosage_instruction"
+                                required
+                                value={editForm.dosage_instruction}
+                                onChange={handleEditInputChange}
+                                className="glass-input px-3 py-2 w-full text-sm"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Daily Scheduled Reminder Time *</label>
+                              <input
+                                type="time"
+                                name="scheduled_time"
+                                required
+                                value={editForm.scheduled_time}
+                                onChange={handleEditInputChange}
+                                className="glass-input px-3 py-2 w-full text-sm font-mono text-slate-100"
+                              />
+                              <span className="text-[10px] text-slate-500 mt-1 block">Triggered automatically by APScheduler every day.</span>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">FHIR ID (Optional)</label>
+                              <input
+                                type="text"
+                                name="fhir_id"
+                                value={editForm.fhir_id}
+                                onChange={handleEditInputChange}
+                                className="glass-input px-3 py-2 w-full text-sm font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end items-center gap-2 pt-2 border-t border-slate-800/60 mt-3">
+                            <button
+                              type="button"
+                              onClick={cancelEditing}
+                              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 transition"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={editSubmitting}
+                              className="glow-btn-teal px-4 py-1.5 rounded-lg font-bold text-xs transition"
+                            >
+                              {editSubmitting ? "Saving..." : "Save Changes"}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    );
+                  }
+
+                  // Normal View Card for this Medication
+                  return (
+                    <div key={med.id} className="p-4 bg-slate-900/40 hover:bg-slate-900/60 border border-slate-800 hover:border-slate-700/80 rounded-xl transition flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-200 text-base">{med.medication_name}</h4>
+                          {med.fhir_id && (
+                            <span className="text-[9px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/50">
+                              FHIR: {med.fhir_id}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                            Active
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300">{med.dosage_instruction}</p>
+                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                          <div className="flex items-center gap-1.5 bg-slate-800/50 px-2.5 py-1 rounded-md border border-slate-700/40">
+                            <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Scheduled: <strong className="text-cyan-300 font-mono">{formatScheduledTimeDisplay(med.scheduled_time)}</strong></span>
+                            <span className="text-slate-500 font-mono text-[10px]">({(med.scheduled_time || "").slice(0, 5)})</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end md:self-auto flex-wrap">
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => startEditing(med)}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900/60 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-600 transition flex items-center gap-1.5"
+                          title="Edit scheduled time or medicine details"
+                        >
+                          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDeleteMed(med.id, med.medication_name)}
+                          disabled={deletingId === med.id}
+                          className="p-1.5 text-xs font-semibold rounded-lg border border-slate-800 text-slate-500 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition"
+                          title="Delete medication"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+
+                        {/* Trigger Outbound Call Button */}
+                        <button
+                          onClick={() => handleTriggerReminder(med.id, med.medication_name)}
+                          disabled={triggeringId === med.id}
+                          className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/50 shadow-md shadow-cyan-500/5 transition flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          {triggeringId === med.id ? (
+                            <>
+                              <svg className="w-3.5 h-3.5 animate-spin text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.2" />
+                              </svg>
+                              Dialing Now...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              </svg>
+                              Trigger Call Now
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
