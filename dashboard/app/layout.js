@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "MedHencer - Medication Adherence Agent",
+  title: "MedHerence - Medication Adherence Agent",
   description: "AI-driven medical adherence agent and patient dashboard monitoring.",
 };
 

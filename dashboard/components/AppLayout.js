@@ -57,7 +57,7 @@ export default function AppLayout({ children }) {
           </div>
           <div>
             <span className="font-semibold text-lg bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
-              MedHencer
+              MedHerence
             </span>
             <span className="block text-[10px] text-slate-400 uppercase tracking-widest font-bold">
               AI Adherence
@@ -117,7 +117,7 @@ export default function AppLayout({ children }) {
               </svg>
             </button>
             <h1 className="text-lg font-semibold text-slate-100 hidden md:block">
-              {pathname === "/" ? "Dashboard Overview" : pathname.startsWith("/patients") ? "Patients Manager" : pathname.startsWith("/calls") ? "Call Logs" : "MedHencer Admin"}
+              {pathname === "/" ? "Dashboard Overview" : pathname.startsWith("/patients") ? "Patients Manager" : pathname.startsWith("/calls") ? "Call Logs" : "MedHerence Admin"}
             </h1>
           </div>
 
@@ -173,7 +173,7 @@ export default function AppLayout({ children }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                 </div>
-                <span className="font-semibold text-md bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">MedHencer</span>
+                <span className="font-semibold text-md bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">MedHerence</span>
               </div>
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 rounded bg-slate-800 text-slate-400">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
