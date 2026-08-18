@@ -24,8 +24,7 @@ def send_whatsapp_interactive_reminder(
     Uses Python's standard library (urllib) for maximum reliability without external dependencies.
     Returns: (message_id, error_message)
     """
-    phone_number_id = config.WHATSAPP_PHONE_NUMBER_ID
-    access_token = config.WHATSAPP_ACCESS_TOKEN
+    phone_number_id, access_token, _ = config.get_whatsapp_config()
 
     if not phone_number_id or not access_token or phone_number_id.startswith("your_") or access_token.startswith("your_"):
         err = "WhatsApp Cloud API credentials (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN) are not configured in .env."
@@ -141,8 +140,7 @@ def send_whatsapp_template(to_phone: str, template_name: str = "hello_world") ->
     Sends an approved Meta WhatsApp template message (e.g. 'hello_world').
     Template messages can initiate conversations at any time outside the 24-hour service window.
     """
-    phone_number_id = config.WHATSAPP_PHONE_NUMBER_ID
-    access_token = config.WHATSAPP_ACCESS_TOKEN
+    phone_number_id, access_token, _ = config.get_whatsapp_config()
 
     if not phone_number_id or not access_token:
         return None, "WhatsApp credentials not configured in .env."
@@ -186,8 +184,7 @@ def send_whatsapp_text(to_phone: str, text: str) -> tuple[str | None, str | None
     """
     Sends a conversational text message to a WhatsApp user using standard urllib.
     """
-    phone_number_id = config.WHATSAPP_PHONE_NUMBER_ID
-    access_token = config.WHATSAPP_ACCESS_TOKEN
+    phone_number_id, access_token, _ = config.get_whatsapp_config()
 
     if not phone_number_id or not access_token:
         return None, "WhatsApp credentials not configured in .env."

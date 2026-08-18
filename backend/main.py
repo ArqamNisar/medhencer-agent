@@ -524,7 +524,8 @@ def whatsapp_verify_webhook(request: Request):
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
 
-    if mode == "subscribe" and token == config.WHATSAPP_VERIFY_TOKEN:
+    _, _, verify_token = config.get_whatsapp_config()
+    if mode == "subscribe" and token == verify_token:
         logger.info("WhatsApp webhook verified successfully.")
         return Response(content=challenge, media_type="text/plain")
     else:

@@ -13,10 +13,17 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+def get_whatsapp_config():
+    load_dotenv(dotenv_path=env_path, override=True)
+    phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip().strip('"').strip("'")
+    token = os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip().strip('"').strip("'")
+    verify_token = os.getenv("WHATSAPP_VERIFY_TOKEN", "medherence_verify_token").strip().strip('"').strip("'")
+    return phone_id, token, verify_token
+
 # WhatsApp Cloud API Settings (Meta)
-WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "medherence_verify_token")
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip().strip('"').strip("'")
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip().strip('"').strip("'")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "medherence_verify_token").strip().strip('"').strip("'")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 PORT = int(os.getenv("PORT", "8000"))
