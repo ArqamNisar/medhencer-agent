@@ -12,6 +12,12 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# WhatsApp Cloud API Settings (Meta)
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "medherence_verify_token")
+
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "0.0.0.0")

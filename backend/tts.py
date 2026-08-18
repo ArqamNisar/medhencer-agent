@@ -123,3 +123,37 @@ def generate_mock_beeps() -> str:
     pcm_bytes = audio_data.tobytes()
     mulaw_bytes = pcm_to_mulaw(pcm_bytes)
     return base64.b64encode(mulaw_bytes).decode('utf-8')
+
+def generate_tts_wav_base64(text: str, voice: str = "af_bella") -> str | None:
+    """
+    Synthesizes speech to standard 24kHz 16-bit Mono WAV format and returns base64 string.
+    Browser audio elements can play this directly: data:audio/wav;base64,...
+    """
+    import io
+    import wave
+    pipeline = get_kokoro_pipeline()
+    if pipeline:
+        try:
+            generator = pipeline(text, voice=voice, speed=1.0)
+            all_audio = []
+            for _, _, audio in generator:
+                if audio is not None and len(audio) > 0:
+                    all_audio.append(audio)
+            
+            if all_audio:
+                audio_np = np.concatenate(all_audio)
+                audio_int16 = (audio_np * 32767).astype(np.int16)
+                
+                wav_io = io.BytesIO()
+                with wave.open(wav_io, 'wb') as wav_file:
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2) # 16-bit PCM
+                    wav_file.setframerate(24000)
+                    wav_file.writeframes(audio_int16.tobytes())
+                
+                return base64.b64encode(wav_io.getvalue()).decode('utf-8')
+        except Exception as e:
+            logger.error(f"Error generating WAV in Kokoro: {e}")
+            
+    return None
+

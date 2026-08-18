@@ -46,7 +46,7 @@ def check_and_trigger_reminders():
                 logger.info(f"Triggering outbound call for patient {patient_name} ({patient_phone}) for medication: {mr['medication_name']}")
                 
                 # Initiate Twilio outbound call
-                call_sid = twilio_client.trigger_outbound_call(
+                call_sid, err = twilio_client.trigger_outbound_call(
                     to_phone=patient_phone,
                     patient_id=patient_id,
                     medication_request_id=mr_id
@@ -59,16 +59,19 @@ def check_and_trigger_reminders():
                         twilio_call_sid=call_sid,
                         status="queued"
                     )
+                else:
+                    logger.error(f"Scheduled call failed for patient {patient_name}: {err}")
         else:
             logger.info(f"No reminders scheduled for {current_time_str}")
             
     except Exception as e:
         logger.error(f"Error checking or triggering reminders: {e}")
 
-def trigger_single_reminder_manually(medication_request_id: str) -> str:
+def trigger_single_reminder_manually(medication_request_id: str) -> tuple[str | None, str | None]:
     """
     Manually triggers an outbound call for a specific medication schedule.
     Used for on-demand calls from the Care Coordinator Dashboard.
+    Returns: (call_sid, error_message)
     """
     query = """
         SELECT mr.*, p.phone_number, p.first_name, p.last_name
@@ -80,8 +83,9 @@ def trigger_single_reminder_manually(medication_request_id: str) -> str:
     try:
         res = database.execute_query(query, (medication_request_id,), fetch=True)
         if not res:
-            logger.warning(f"Medication request ID {medication_request_id} not found.")
-            return None
+            err = f"Medication request ID '{medication_request_id}' not found in database."
+            logger.warning(err)
+            return None, err
             
         mr = res[0]
         patient_name = f"{mr['first_name']} {mr['last_name']}"
@@ -90,7 +94,7 @@ def trigger_single_reminder_manually(medication_request_id: str) -> str:
         
         logger.info(f"Manual trigger for patient {patient_name} ({patient_phone}) for {mr['medication_name']}")
         
-        call_sid = twilio_client.trigger_outbound_call(
+        call_sid, err = twilio_client.trigger_outbound_call(
             to_phone=patient_phone,
             patient_id=patient_id,
             medication_request_id=str(mr['id'])
@@ -103,12 +107,14 @@ def trigger_single_reminder_manually(medication_request_id: str) -> str:
                 twilio_call_sid=call_sid,
                 status="queued"
             )
-            return call_sid
+            return call_sid, None
+        else:
+            return None, err
             
     except Exception as e:
-        logger.error(f"Error triggering manual reminder: {e}")
-        
-    return None
+        err = f"Error triggering manual reminder: {str(e)}"
+        logger.error(err)
+        return None, err
 
 def start_scheduler():
     """Starts the background scheduler loop."""
