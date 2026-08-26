@@ -639,35 +639,100 @@ async def whatsapp_incoming_webhook(request: Request):
                                 text=f"We have noted your side effect alert for your care team, {patient_name}. Please reply with details about any symptoms you are experiencing so we can document them."
                             )
 
-                    # 2. Text Message Reply
+                    # 2. Text Message Reply (including numbered quick-replies from text-based reminders)
                     elif msg_type == "text":
                         text_body = msg.get("text", {}).get("body", "").strip()
+                        text_lower = text_body.lower()
                         logger.info(f"WhatsApp text received from {patient_name}: '{text_body}'")
 
-                        session_id = f"wa_{from_number}"
-                        ai_response, _ = brain.get_next_response(session_id, text_body)
-                        
-                        whatsapp_client.send_whatsapp_text(to_phone=from_number, text=ai_response)
+                        # Check for quick-reply keywords that match our text-based reminder options
+                        quick_reply_action = None
+                        if text_lower in ("1", "taken", "i took it", "yes", "took it"):
+                            quick_reply_action = "taken"
+                        elif text_lower in ("2", "missed", "missed dose", "no", "didn't take", "didnt take"):
+                            quick_reply_action = "missed"
+                        elif text_lower in ("3", "side effects", "side effect", "sideeffects", "side-effects"):
+                            quick_reply_action = "sideeffects"
 
-                        if patient_id:
-                            summary = brain.extract_adherence_summary(session_id)
+                        if quick_reply_action and patient_id:
+                            # Handle as a quick-reply — same logic as interactive button clicks
                             meds = database.get_medication_requests_for_patient(patient_id)
                             first_med_id = str(meds[0]["id"]) if meds else None
 
-                            if first_med_id:
-                                database.log_adherence_record(
-                                    patient_id=patient_id,
-                                    medication_request_id=first_med_id,
-                                    call_log_id=None,
-                                    status=summary["status"],
-                                    missed_reason=summary["missed_reason"],
-                                    notes=summary["notes"]
+                            if quick_reply_action == "taken":
+                                if first_med_id:
+                                    database.log_adherence_record(
+                                        patient_id=patient_id,
+                                        medication_request_id=first_med_id,
+                                        call_log_id=None,
+                                        status="taken",
+                                        notes="Confirmed taken via WhatsApp text reply"
+                                    )
+                                whatsapp_client.send_whatsapp_text(
+                                    to_phone=from_number,
+                                    text=f"Thank you, {patient_name}! Your dose has been recorded as taken. Stay healthy! 🌟"
                                 )
-                                database.check_and_set_escalation(patient_id)
+                            elif quick_reply_action == "missed":
+                                if first_med_id:
+                                    database.log_adherence_record(
+                                        patient_id=patient_id,
+                                        medication_request_id=first_med_id,
+                                        call_log_id=None,
+                                        status="missed",
+                                        missed_reason="forgot",
+                                        notes="Reported missed dose via WhatsApp text reply"
+                                    )
+                                    database.check_and_set_escalation(patient_id)
+                                whatsapp_client.send_whatsapp_text(
+                                    to_phone=from_number,
+                                    text=f"Thank you for letting us know, {patient_name}. Did you forget, run out of medication, or have side effects? Please reply with a message so we can log it for your doctor."
+                                )
+                            elif quick_reply_action == "sideeffects":
+                                if first_med_id:
+                                    database.log_adherence_record(
+                                        patient_id=patient_id,
+                                        medication_request_id=first_med_id,
+                                        call_log_id=None,
+                                        status="refused",
+                                        missed_reason="side-effects",
+                                        notes="Reported side effects via WhatsApp text reply"
+                                    )
+                                    database.check_and_set_escalation(patient_id)
+                                whatsapp_client.send_whatsapp_text(
+                                    to_phone=from_number,
+                                    text=f"We have noted your side effect alert for your care team, {patient_name}. Please reply with details about any symptoms you are experiencing so we can document them."
+                                )
 
                             log_sid = f"wa_{uuid.uuid4().hex[:10]}"
                             database.create_call_log(patient_id, log_sid, status="completed", direction="whatsapp")
-                            database.update_call_log(log_sid, transcript=f"Patient: {text_body}\nMedHerence Agent: {ai_response}")
+                            database.update_call_log(log_sid, transcript=f"Patient quick-reply: {text_body} (action: {quick_reply_action})")
+
+                        else:
+                            # Free-form text — route to AI brain
+                            session_id = f"wa_{from_number}"
+                            ai_response, _ = brain.get_next_response(session_id, text_body)
+                            
+                            whatsapp_client.send_whatsapp_text(to_phone=from_number, text=ai_response)
+
+                            if patient_id:
+                                summary = brain.extract_adherence_summary(session_id)
+                                meds = database.get_medication_requests_for_patient(patient_id)
+                                first_med_id = str(meds[0]["id"]) if meds else None
+
+                                if first_med_id:
+                                    database.log_adherence_record(
+                                        patient_id=patient_id,
+                                        medication_request_id=first_med_id,
+                                        call_log_id=None,
+                                        status=summary["status"],
+                                        missed_reason=summary["missed_reason"],
+                                        notes=summary["notes"]
+                                    )
+                                    database.check_and_set_escalation(patient_id)
+
+                                log_sid = f"wa_{uuid.uuid4().hex[:10]}"
+                                database.create_call_log(patient_id, log_sid, status="completed", direction="whatsapp")
+                                database.update_call_log(log_sid, transcript=f"Patient: {text_body}\nMedHerence Agent: {ai_response}")
 
         return {"status": "ok"}
     except Exception as e:
@@ -675,9 +740,11 @@ async def whatsapp_incoming_webhook(request: Request):
         return {"status": "error", "detail": str(e)}
 
 @app.post("/api/whatsapp/trigger")
-def api_trigger_whatsapp_reminder(req: WhatsAppTriggerRequest):
+async def api_trigger_whatsapp_reminder(req: WhatsAppTriggerRequest):
     """
     Triggers an interactive WhatsApp medication reminder for a specific medication schedule.
+    First sends a template message to open the 24-hour conversation window (required by Meta),
+    then sends the interactive button reminder.
     """
     query = """
         SELECT mr.*, p.phone_number, p.first_name, p.last_name
@@ -696,16 +763,43 @@ def api_trigger_whatsapp_reminder(req: WhatsAppTriggerRequest):
     dosage = mr['dosage_instruction']
     med_id = str(mr['id'])
 
-    msg_id, err = whatsapp_client.send_whatsapp_interactive_reminder(
+    # Step 1: Send a template message to open the 24-hour conversation window.
+    # Meta requires an approved template to initiate conversations outside the window.
+    logger.info(f"Opening WhatsApp conversation window for {patient_phone} via template message...")
+    tmpl_id, tmpl_err = whatsapp_client.send_whatsapp_template(
         to_phone=patient_phone,
-        patient_name=mr['first_name'],
-        medication_name=med_name,
-        dosage=dosage,
-        medication_request_id=med_id
+        template_name="hello_world"
+    )
+    if not tmpl_id:
+        logger.warning(f"Template message failed: {tmpl_err}. Attempting text reminder anyway...")
+    else:
+        logger.info(f"Template message sent (ID: {tmpl_id}). Waiting before sending reminder text...")
+        await asyncio.sleep(3)
+
+    # Step 2: Send the medication reminder as a plain text message.
+    # Interactive button messages are silently dropped in Meta's sandbox/test tier,
+    # so we use a text message with numbered reply options instead.
+    reminder_text = (
+        f"💊 *MedHerence Medication Reminder*\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"Hi {mr['first_name']}, it's time for your medication!\n\n"
+        f"*Medication:* {med_name}\n"
+        f"*Instructions:* {dosage}\n\n"
+        f"Have you taken your scheduled dose?\n\n"
+        f"Please reply with:\n"
+        f"  *1* ✅ I took it\n"
+        f"  *2* ❌ Missed dose\n"
+        f"  *3* ⚠️ Side effects\n\n"
+        f"Or reply with any message to talk to our AI assistant."
+    )
+
+    msg_id, err = whatsapp_client.send_whatsapp_text(
+        to_phone=patient_phone,
+        text=reminder_text
     )
 
     if not msg_id:
-        raise HTTPException(status_code=400, detail=err or "Failed to send WhatsApp message.")
+        raise HTTPException(status_code=400, detail=err or "Failed to send WhatsApp reminder.")
 
     unique_log_sid = f"wa_{uuid.uuid4().hex[:16]}"
     database.create_call_log(
@@ -716,12 +810,13 @@ def api_trigger_whatsapp_reminder(req: WhatsAppTriggerRequest):
     )
     database.update_call_log(
         unique_log_sid, 
-        transcript=f"WhatsApp Interactive Reminder Dispatched for {med_name} ({dosage}). Message ID: {msg_id}"
+        transcript=f"WhatsApp Text Reminder Dispatched for {med_name} ({dosage}). Template ID: {tmpl_id}, Message ID: {msg_id}"
     )
 
     return {
         "status": "sent",
         "message_id": msg_id,
+        "template_id": tmpl_id,
         "recipient": patient_phone,
         "patient": patient_name
     }
