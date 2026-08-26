@@ -28,11 +28,11 @@ export default function AppLayout({ children }) {
       ),
     },
     {
-      name: "Call Logs",
+      name: "Reminder Logs",
       href: "/calls",
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       ),
     },
@@ -117,7 +117,7 @@ export default function AppLayout({ children }) {
               </svg>
             </button>
             <h1 className="text-lg font-semibold text-slate-100 hidden md:block">
-              {pathname === "/" ? "Dashboard Overview" : pathname.startsWith("/patients") ? "Patients Manager" : pathname.startsWith("/calls") ? "Call Logs" : "MedHerence Admin"}
+              {pathname === "/" ? "Dashboard Overview" : pathname.startsWith("/patients") ? "Patients Manager" : pathname.startsWith("/calls") ? "Reminder Logs" : "MedHerence Admin"}
             </h1>
           </div>
 

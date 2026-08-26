@@ -78,8 +78,8 @@ export default function CallLogsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Call Logs Auditing</h2>
-          <p className="text-sm text-slate-400">Review patient interaction logs, speech transcripts, and call durations.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-white">Reminder Logs</h2>
+          <p className="text-sm text-slate-400">Review WhatsApp reminder logs, patient responses, and interaction details.</p>
         </div>
         <button
           onClick={fetchCalls}
@@ -133,9 +133,9 @@ export default function CallLogsPage() {
             <svg className="w-16 h-16 text-slate-700 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
-            <p className="font-semibold text-slate-400">No Calls Logged</p>
+            <p className="font-semibold text-slate-400">No Reminders Logged</p>
             <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1">
-              {searchQuery ? "No logs match your filter." : "Outbound patient reminders will write audit entries here when run."}
+              {searchQuery ? "No logs match your filter." : "WhatsApp reminders will be logged here when sent."}
             </p>
           </div>
         ) : (
@@ -214,7 +214,7 @@ export default function CallLogsPage() {
                           <div className="bg-[#0e1322]/80 border border-slate-800 rounded-xl p-5 space-y-4 max-w-4xl animate-fade-in shadow-inner">
                             <div className="flex justify-between items-center text-xs text-slate-500 border-b border-slate-800/60 pb-2">
                               <span className="font-semibold uppercase tracking-wider text-cyan-400">AI Agent Transcript Audit</span>
-                              <span className="font-mono text-slate-500">Call SID: {call.twilio_call_sid}</span>
+                              <span className="font-mono text-slate-500">Reminder ID: {call.twilio_call_sid}</span>
                             </div>
                             <div className="text-sm leading-relaxed text-slate-300 whitespace-pre-wrap font-sans max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                               {call.transcript}

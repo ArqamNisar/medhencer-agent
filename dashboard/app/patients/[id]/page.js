@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import WebVoiceCallModal from "@/components/WebVoiceCallModal";
 
 export default function PatientDetailPage({ params }) {
   const resolvedParams = use(params);
@@ -12,9 +11,6 @@ export default function PatientDetailPage({ params }) {
   const [medications, setMedications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // In-Browser Live AI Voice Call state
-  const [activeWebCallMed, setActiveWebCallMed] = useState(null);
 
   // Add Medication Form State
   const [isAddMedOpen, setIsAddMedOpen] = useState(false);
@@ -36,8 +32,7 @@ export default function PatientDetailPage({ params }) {
     fhir_id: "",
   });
 
-  // Call & WhatsApp reminder trigger state & Notification banner
-  const [triggeringId, setTriggeringId] = useState(null);
+  // WhatsApp reminder trigger state & Notification banner
   const [whatsappTriggeringId, setWhatsappTriggeringId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [callNotification, setCallNotification] = useState(null);
@@ -239,49 +234,7 @@ export default function PatientDetailPage({ params }) {
     }
   };
 
-  // Real-Time Call Reminder Trigger Handler
-  const handleTriggerReminder = async (medId, medName) => {
-    try {
-      setTriggeringId(medId);
-      setCallNotification(null);
-
-      const res = await fetch("/api/reminders/trigger", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ medication_request_id: String(medId) }),
-      });
-
-      let data = {};
-      try {
-        data = await res.json();
-      } catch (parseErr) {
-        throw new Error(`Server returned error (${res.status}). Please check backend logs.`);
-      }
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Outbound call trigger failed");
-      }
-
-      setCallNotification({
-        type: "success",
-        medName: medName,
-        isWhatsApp: false,
-        callSid: data.call_sid,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      });
-    } catch (err) {
-      setCallNotification({
-        type: "error",
-        medName: medName,
-        isWhatsApp: false,
-        message: err.message,
-      });
-    } finally {
-      setTriggeringId(null);
-    }
-  };
-
-  // WhatsApp Interactive Reminder Trigger Handler
+  // WhatsApp Reminder Trigger Handler
   const handleTriggerWhatsApp = async (medId, medName) => {
     try {
       setWhatsappTriggeringId(medId);
@@ -307,7 +260,6 @@ export default function PatientDetailPage({ params }) {
       setCallNotification({
         type: "success",
         medName: medName,
-        isWhatsApp: true,
         callSid: data.message_id,
         recipient: data.recipient,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
@@ -317,7 +269,6 @@ export default function PatientDetailPage({ params }) {
       setCallNotification({
         type: "error",
         medName: medName,
-        isWhatsApp: true,
         message: err.message,
       });
     } finally {
@@ -421,28 +372,22 @@ export default function PatientDetailPage({ params }) {
         </div>
       )}
 
-      {/* Real-time Call / WhatsApp Trigger Feedback Notification Banner */}
+      {/* WhatsApp Reminder Feedback Notification Banner */}
       {callNotification && (
         <div className={`p-5 rounded-2xl border animate-fade-in ${
           callNotification.type === "success" 
-            ? "bg-[#0b1b1e] border-teal-500/40 shadow-xl shadow-teal-500/10 text-slate-200" 
+            ? "bg-[#0b1b1e] border-emerald-500/40 shadow-xl shadow-emerald-500/10 text-slate-200" 
             : "bg-[#1f1013] border-red-500/40 shadow-xl shadow-red-500/10 text-slate-200"
         }`}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                callNotification.type === "success" ? (callNotification.isWhatsApp ? "bg-emerald-500/20 text-emerald-400" : "bg-teal-500/20 text-teal-400") : "bg-red-500/20 text-red-400"
+                callNotification.type === "success" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
               }`}>
                 {callNotification.type === "success" ? (
-                  callNotification.isWhatsApp ? (
-                    <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                  )
+                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
                 ) : (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -451,9 +396,9 @@ export default function PatientDetailPage({ params }) {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className={`font-bold text-sm ${callNotification.type === "success" ? (callNotification.isWhatsApp ? "text-emerald-300" : "text-teal-300") : "text-red-400"}`}>
+                  <h4 className={`font-bold text-sm ${callNotification.type === "success" ? "text-emerald-300" : "text-red-400"}`}>
                     {callNotification.type === "success" 
-                      ? (callNotification.isWhatsApp ? "WhatsApp Interactive Reminder Dispatched" : "Live Reminder Call Initiated") 
+                      ? "WhatsApp Reminder Dispatched" 
                       : "Reminder Trigger Failed"}
                   </h4>
                   {callNotification.time && (
@@ -464,11 +409,7 @@ export default function PatientDetailPage({ params }) {
                 {callNotification.type === "success" ? (
                   <div className="mt-1 space-y-1.5 text-xs text-slate-300">
                     <p>
-                      {callNotification.isWhatsApp ? (
-                        <>Interactive WhatsApp message sent to <strong className="text-white font-mono">{patient?.phone_number}</strong> with Quick-Reply buttons.</>
-                      ) : (
-                        <>The AI Voice Assistant is dialing <strong className="text-white font-mono">{patient?.phone_number}</strong> for <strong className="text-cyan-300">{callNotification.medName}</strong>.</>
-                      )}
+                      WhatsApp medication reminder sent to <strong className="text-white font-mono">{patient?.phone_number}</strong> for <strong className="text-emerald-300">{callNotification.medName}</strong>.
                     </p>
                     <div className="flex flex-wrap items-center gap-3 pt-1">
                       <span className="font-mono text-[11px] text-slate-400 bg-slate-900/80 px-2 py-1 rounded border border-slate-800">
@@ -478,7 +419,7 @@ export default function PatientDetailPage({ params }) {
                         href="/calls"
                         className="text-cyan-400 hover:text-cyan-300 font-semibold inline-flex items-center gap-1 transition"
                       >
-                        Audit Real-time Interaction Logs & Transcript
+                        View Reminder Logs
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
@@ -775,19 +716,7 @@ export default function PatientDetailPage({ params }) {
                       </div>
 
                       <div className="flex items-center gap-2 self-end md:self-auto flex-wrap">
-                        {/* 1. In-Browser Live AI Voice Call Button */}
-                        <button
-                          onClick={() => setActiveWebCallMed(med)}
-                          className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-teal-500/20 to-cyan-500/20 text-cyan-300 hover:from-teal-500/30 hover:to-cyan-500/30 border border-cyan-400/40 hover:border-cyan-400 shadow-md shadow-cyan-500/10 transition flex items-center gap-1.5"
-                          title="Talk directly with MedHerence AI Voice Assistant using your computer microphone and speakers"
-                        >
-                          <svg className="w-3.5 h-3.5 text-teal-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
-                          </svg>
-                          <span>Start AI Voice Call (Web Mic)</span>
-                        </button>
-
-                        {/* 2. WhatsApp Interactive Reminder Button */}
+                        {/* 1. WhatsApp Reminder Button */}
                         <button
                           onClick={() => handleTriggerWhatsApp(med.id, med.medication_name)}
                           disabled={whatsappTriggeringId === med.id}
@@ -811,7 +740,7 @@ export default function PatientDetailPage({ params }) {
                           )}
                         </button>
 
-                        {/* 3. Edit Medication & Schedule Button */}
+                        {/* 2. Edit Medication & Schedule Button */}
                         <button
                           onClick={() => startEditing(med)}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900/60 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-600 transition flex items-center gap-1.5"
@@ -823,7 +752,7 @@ export default function PatientDetailPage({ params }) {
                           Edit
                         </button>
 
-                        {/* 4. Delete Medication Button */}
+                        {/* 3. Delete Medication Button */}
                         <button
                           onClick={() => handleDeleteMed(med.id, med.medication_name)}
                           disabled={deletingId === med.id}
@@ -834,30 +763,6 @@ export default function PatientDetailPage({ params }) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
-
-                        {/* 5. Twilio Outbound Phone Call Button */}
-                        <button
-                          onClick={() => handleTriggerReminder(med.id, med.medication_name)}
-                          disabled={triggeringId === med.id}
-                          className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5 disabled:opacity-50"
-                          title="Dial patient's physical phone via Twilio"
-                        >
-                          {triggeringId === med.id ? (
-                            <>
-                              <svg className="w-3 h-3 animate-spin text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.2" />
-                              </svg>
-                              Dialing Phone...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                              </svg>
-                              Phone Call (Twilio)
-                            </>
-                          )}
-                        </button>
                       </div>
                     </div>
                   );
@@ -867,19 +772,6 @@ export default function PatientDetailPage({ params }) {
           </div>
         </div>
       </div>
-
-      {/* In-Browser Live AI Voice Call Modal */}
-      {activeWebCallMed && patient && (
-        <WebVoiceCallModal
-          isOpen={Boolean(activeWebCallMed)}
-          onClose={() => setActiveWebCallMed(null)}
-          patient={patient}
-          medication={activeWebCallMed}
-          onCallCompleted={() => {
-            fetchPatientDetails();
-          }}
-        />
-      )}
     </div>
   );
 }

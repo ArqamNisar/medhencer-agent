@@ -270,8 +270,8 @@ export default function DashboardPage() {
         <div className="glass-panel p-6 rounded-2xl lg:col-span-7 flex flex-col h-[500px]">
           <div className="flex justify-between items-center pb-4 border-b border-slate-800/40">
             <div>
-              <h3 className="font-bold text-lg text-slate-100">Recent Automated Calls</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Logs of outbound AI agent reminders.</p>
+              <h3 className="font-bold text-lg text-slate-100">Recent WhatsApp Reminders</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Automated WhatsApp medication reminders.</p>
             </div>
             <Link
               href="/calls"
@@ -290,8 +290,8 @@ export default function DashboardPage() {
                 <svg className="w-12 h-12 text-slate-700 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <p className="font-medium text-slate-400">No Calls Found</p>
-                <p className="text-xs text-slate-500 max-w-xs mt-1">When the automated voice reminders run, they will appear here.</p>
+                <p className="font-medium text-slate-400">No Reminders Found</p>
+                <p className="text-xs text-slate-500 max-w-xs mt-1">When WhatsApp medication reminders are sent, they will appear here.</p>
               </div>
             ) : (
               <div className="overflow-x-auto w-full">

@@ -277,7 +277,7 @@ export default function PatientsPage() {
                   placeholder="e.g. +14155552671"
                   className="glass-input px-3.5 py-2 w-full text-sm font-mono"
                 />
-                <span className="text-[10px] text-slate-500 mt-1 block">Include country code (e.g. +1 for USA) for outbound Twilio calls.</span>
+                <span className="text-[10px] text-slate-500 mt-1 block">Include country code (e.g. +92 for Pakistan) for WhatsApp reminders.</span>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
